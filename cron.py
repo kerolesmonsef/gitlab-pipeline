@@ -13,6 +13,9 @@ up-to-date without manual intervention:
 import os
 import sys
 import urllib.parse
+from dotenv import load_dotenv
+
+load_dotenv()
 from datetime import datetime, timezone
 
 from rich.console import Console
@@ -25,7 +28,7 @@ import pipeline_status as ps
 
 console = Console()
 
-MAX_ATTEMPTS = 60
+MAX_ATTEMPTS = 30
 
 
 def run() -> None:

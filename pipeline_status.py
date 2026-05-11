@@ -3,6 +3,9 @@ import json
 import os
 import re
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
 import urllib.error
 import urllib.parse
 import urllib.request

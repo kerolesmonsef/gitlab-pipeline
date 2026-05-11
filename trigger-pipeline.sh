@@ -2,6 +2,10 @@ GITLAB_URL="https://git.foo.mobi"
 DEFAULT_PROJECT_PATH="adc/backends/project-name"
 BRANCH="staging"
 
+if [[ -f .env ]]; then
+  source .env
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project-path)
