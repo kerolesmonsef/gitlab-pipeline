@@ -46,14 +46,14 @@ def run() -> None:
 
     records = Pipeline.read_all()
     if not records:
-        console.print(
-            Panel.fit(
-                "[dim](no pipeline records in pipeline.json — nothing to do)[/dim]",
-                title="[bold magenta]ℹ️  Info[/bold magenta]",
-                border_style="cyan",
-                box=box.DOUBLE_EDGE,
-            )
-        )
+        # console.print(
+        #     Panel.fit(
+        #         "[dim](no pipeline records in pipeline.json — nothing to do)[/dim]",
+        #         title="[bold magenta]ℹ️  Info[/bold magenta]",
+        #         border_style="cyan",
+        #         box=box.DOUBLE_EDGE,
+        #     )
+        # )
         return
 
     console.print(

@@ -201,7 +201,7 @@ def main():
         if not record:
             console.print(
                 Panel.fit(
-                    "[bold red]✘ pipeline.json is empty — trigger a pipeline first.[/bold red]",
+                    "[bold red]✘ pipeline.json is empty — trigger a pipeline or MR first.[/bold red]",
                     title="[bold magenta]⚠️ Error[/bold magenta]",
                     border_style="red",
                     box=box.DOUBLE_EDGE,
