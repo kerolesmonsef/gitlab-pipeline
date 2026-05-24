@@ -1,2 +1,4 @@
 .env
 cron.log
+.idea/
+__pycache__/
