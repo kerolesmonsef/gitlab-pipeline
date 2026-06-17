@@ -2,3 +2,7 @@
 cron.log
 .idea/
 __pycache__/
+*.pyc
+mr.json
+pipeline.json
+

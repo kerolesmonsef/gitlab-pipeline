@@ -31,32 +31,6 @@ def _save(records: list[dict]) -> None:
         f.write("\n")
 
 
-def create_from_mr(
-    project_path: str,
-    branch: str,
-    source_branch: str,
-    title: str,
-    web_url: str,
-    merge_request_iid: int,
-    state: str,
-) -> dict:
-    """Append a new merge request record and return it."""
-    record = {
-        "type": "merge_request",
-        "project_path": project_path,
-        "branch": branch,
-        "source_branch": source_branch,
-        "title": title,
-        "web_url": web_url,
-        "merge_request_iid": merge_request_iid,
-        "state": state,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    records = _load()
-    records.append(record)
-    _save(records)
-    return record
-
 
 # ── public API ───────────────────────────────────────────────────────────────
 
@@ -165,32 +139,16 @@ def list_all(verbose: bool = False) -> None:
     table.add_column("Triggered At", style="dim", no_wrap=True)
 
     for i, r in enumerate(records, 1):
-        record_type = r.get("type", "pipeline")
-        if record_type == "merge_request":
-            mr_state = r.get("state", "?")
-            mr_icon = "🟢" if mr_state == "opened" else "🔴" if mr_state == "closed" else "⚪"
-            source = r.get("source_branch", "?")[:20]
-            table.add_row(
-                str(i),
-                f"MR !{r.get('merge_request_iid', '?')}",
-                f"{mr_icon} {mr_state}",
-                f"→ {r.get('branch', '?')}",
-                f"← {source}",
-                r.get("project_path", "?")[:40],
-                r.get("created_at", "?")[:19],
-            )
-        else:
-            status = r.get("status", "?")
-            icon = STATUS_ICONS.get(status, "❓")
-            table.add_row(
-                str(i),
-                r.get("pipeline_id", "?"),
-                f"{icon} {status}",
-                r.get("branch", "?"),
-                "-",
-                r.get("project_path", "?")[:40],
-                r.get("triggered_at", "?")[:19],
-            )
+        status = r.get("status", "?")
+        icon = STATUS_ICONS.get(status, "❓")
+        table.add_row(
+            str(i),
+            r.get("pipeline_id", "?"),
+            f"{icon} {status}",
+            r.get("branch", "?"),
+            r.get("project_path", "?")[:40],
+            r.get("triggered_at", "?")[:19],
+        )
 
     console.print(table)
 
