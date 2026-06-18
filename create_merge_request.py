@@ -23,11 +23,27 @@ from rich.panel import Panel
 from rich.rule import Rule
 
 import MR
+import Pipeline
 
 load_dotenv()
 
 console = Console()
 GITLAB_URL = "https://git.foo.mobi"
+
+
+def api_post_soft(path: str, token: str, data: bytes = b"") -> dict | None:
+    """POST request that returns None on HTTP error instead of exiting."""
+    req = urllib.request.Request(
+        f"{GITLAB_URL}/api/v4{path}",
+        data=data,
+        headers={"PRIVATE-TOKEN": token},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError:
+        return None
 
 
 def api_get(path: str, token: str) -> dict:
@@ -123,6 +139,22 @@ def extract_mr_url(output: str) -> str | None:
     return m.group(0) if m else None
 
 
+def try_auto_merge(encoded_project: str, mr_iid: int, token: str) -> dict | None:
+    """Attempt immediate merge. Returns merged MR dict on success, None if not mergeable."""
+    return api_post_soft(
+        f"/projects/{encoded_project}/merge_requests/{mr_iid}/merge",
+        token,
+    )
+
+
+def find_post_merge_pipeline(encoded_project: str, sha: str, token: str) -> dict | None:
+    """Look up the pipeline triggered by a merge commit SHA. Returns first result or None."""
+    pipelines = api_get(f"/projects/{encoded_project}/pipelines?sha={sha}", token)
+    if isinstance(pipelines, list) and pipelines:
+        return pipelines[0]
+    return None
+
+
 def parse_mr_url(url: str) -> tuple[str, int]:
     pattern = r"https?://[^/]+/(.+)/-/merge_requests/(\d+)"
     m = re.match(pattern, url)
@@ -145,6 +177,11 @@ def main():
         "--target", "-t",
         required=True,
         help="Target branch for the MR (e.g. staging, main)",
+    )
+    parser.add_argument(
+        "--auto-merge",
+        action="store_true",
+        help="Attempt to merge immediately after creation; falls back to mr.json tracking if not mergeable",
     )
     args = parser.parse_args()
 
@@ -220,6 +257,62 @@ def main():
         )
         sys.exit(0)
 
+    if args.auto_merge:
+        console.print("[dim]Attempting immediate merge...[/dim]")
+        merged = try_auto_merge(encoded_project, mr_iid, token)
+
+        if merged is None:
+            console.print(
+                Panel.fit(
+                    "[bold yellow]⚠️ MR not mergeable yet — falling back to mr.json tracking.[/bold yellow]\n"
+                    "[dim]cron.py will retry every minute.[/dim]",
+                    title="[bold magenta]ℹ️ Auto-Merge Failed[/bold magenta]",
+                    border_style="yellow",
+                    box=box.DOUBLE_EDGE,
+                )
+            )
+        else:
+            console.print(
+                Panel.fit(
+                    "[bold green]✓ MR merged successfully![/bold green]",
+                    title="[bold magenta]🟣 Merged[/bold magenta]",
+                    border_style="green",
+                    box=box.DOUBLE_EDGE,
+                )
+            )
+            sha = merged.get("merge_commit_sha") or merged.get("squash_commit_sha")
+            if sha:
+                console.print(f"  [dim]Merge SHA:[/dim] [cyan]{sha[:8]}[/cyan]")
+                pipeline = find_post_merge_pipeline(encoded_project, sha, token)
+                if pipeline:
+                    pipeline_id = str(pipeline["id"])
+                    pipeline_url = pipeline.get("web_url", "")
+                    pipeline_branch = pipeline.get("ref", target_branch)
+                    Pipeline.create(
+                        pipeline_id=pipeline_id,
+                        project_path=project_path,
+                        branch=pipeline_branch,
+                        web_url=pipeline_url,
+                        variables={"promoted_from_mr": str(mr_iid)},
+                    )
+                    console.print(Rule())
+                    console.print(
+                        Panel.fit(
+                            f"[bold green]✓ Merged and pipeline tracked![/bold green]\n\n"
+                            f"[dim]Title:[/dim]    [white]{title[:60]}[/white]\n"
+                            f"[dim]Project:[/dim]  [yellow]{project_path}[/yellow]\n"
+                            f"[dim]Pipeline:[/dim] [cyan]#{pipeline_id}[/cyan]\n"
+                            f"[dim]URL:[/dim]      [cyan]{pipeline_url}[/cyan]\n\n"
+                            f"[dim]cron.py will auto-trigger manual deploy jobs.[/dim]",
+                            title="[bold magenta]🎉 Done[/bold magenta]",
+                            border_style="green",
+                            box=box.DOUBLE_EDGE,
+                        )
+                    )
+                    return
+            # SHA not available yet or no pipeline found — track as merged MR so cron promotes it
+            console.print("[dim]Post-merge pipeline not ready yet — tracking in mr.json.[/dim]")
+
     MR.create(
         project_path=project_path,
         mr_iid=mr_iid,
@@ -227,6 +320,7 @@ def main():
         title=title,
         source_branch=source_branch,
         target_branch=target_branch,
+        auto_merge=args.auto_merge,
     )
 
     console.print(Rule())

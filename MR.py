@@ -29,6 +29,7 @@ def create(
     title: str,
     source_branch: str,
     target_branch: str,
+    auto_merge: bool = False,
 ) -> dict:
     record = {
         "project_path": project_path,
@@ -39,6 +40,7 @@ def create(
         "target_branch": target_branch,
         "tracked_at": datetime.now(timezone.utc).isoformat(),
         "attempts": 0,
+        "auto_merge": auto_merge,
     }
     records = _load()
     records.append(record)

@@ -49,6 +49,21 @@ def _api_get(path: str, token: str):
         raise RuntimeError(f"HTTP {e.code}: {e.read().decode()}")
 
 
+def _api_post_soft(path: str, token: str, data: bytes = b""):
+    """POST that returns None on HTTP error instead of raising."""
+    req = urllib.request.Request(
+        f"{GITLAB_URL}/api/v4{path}",
+        data=data,
+        headers={"PRIVATE-TOKEN": token},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError:
+        return None
+
+
 def process_mr_records(token: str) -> None:
     records = MR.read_all()
     if not records:
@@ -138,7 +153,18 @@ def process_mr_records(token: str) -> None:
                 console.print(f"  [bold green]✓[/bold green] [dim]MR removed, pipeline #{pipeline_id} now tracked[/dim]")
                 continue
 
-            # state == "opened" — still waiting
+            # state == "opened" — try auto-merge if flagged, otherwise wait
+            if record.get("auto_merge"):
+                console.print(f"  [dim]auto_merge=true — attempting merge...[/dim]")
+                merge_result = _api_post_soft(
+                    f"/projects/{encoded_project}/merge_requests/{mr_iid}/merge",
+                    token,
+                )
+                if merge_result is None:
+                    console.print(f"  [dim]Not mergeable yet — will retry next cycle[/dim]")
+                else:
+                    console.print(f"  [bold green]✓[/bold green] [dim]Merge triggered — will pick up pipeline next cycle[/dim]")
+
             attempts = MR.increment_attempts(project, mr_iid)
             console.print(f"  [dim]Still open — attempt [cyan]{attempts}/{MR_MAX_ATTEMPTS}[/cyan][/dim]")
             if attempts >= MR_MAX_ATTEMPTS:
