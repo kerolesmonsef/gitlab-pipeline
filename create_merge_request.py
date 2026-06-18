@@ -31,13 +31,13 @@ console = Console()
 GITLAB_URL = "https://git.foo.mobi"
 
 
-def api_post_soft(path: str, token: str, data: bytes = b"") -> dict | None:
-    """POST request that returns None on HTTP error instead of exiting."""
+def api_put_soft(path: str, token: str, data: bytes = b"") -> dict | None:
+    """PUT request that returns None on HTTP error instead of exiting."""
     req = urllib.request.Request(
         f"{GITLAB_URL}/api/v4{path}",
         data=data,
         headers={"PRIVATE-TOKEN": token},
-        method="POST",
+        method="PUT",
     )
     try:
         with urllib.request.urlopen(req) as resp:
@@ -141,7 +141,7 @@ def extract_mr_url(output: str) -> str | None:
 
 def try_auto_merge(encoded_project: str, mr_iid: int, token: str) -> dict | None:
     """Attempt immediate merge. Returns merged MR dict on success, None if not mergeable."""
-    return api_post_soft(
+    return api_put_soft(
         f"/projects/{encoded_project}/merge_requests/{mr_iid}/merge",
         token,
     )

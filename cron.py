@@ -49,13 +49,13 @@ def _api_get(path: str, token: str):
         raise RuntimeError(f"HTTP {e.code}: {e.read().decode()}")
 
 
-def _api_post_soft(path: str, token: str, data: bytes = b""):
-    """POST that returns None on HTTP error instead of raising."""
+def _api_put_soft(path: str, token: str, data: bytes = b""):
+    """PUT that returns None on HTTP error instead of raising."""
     req = urllib.request.Request(
         f"{GITLAB_URL}/api/v4{path}",
         data=data,
         headers={"PRIVATE-TOKEN": token},
-        method="POST",
+        method="PUT",
     )
     try:
         with urllib.request.urlopen(req) as resp:
@@ -156,7 +156,7 @@ def process_mr_records(token: str) -> None:
             # state == "opened" — try auto-merge if flagged, otherwise wait
             if record.get("auto_merge"):
                 console.print(f"  [dim]auto_merge=true — attempting merge...[/dim]")
-                merge_result = _api_post_soft(
+                merge_result = _api_put_soft(
                     f"/projects/{encoded_project}/merge_requests/{mr_iid}/merge",
                     token,
                 )
