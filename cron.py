@@ -79,13 +79,13 @@ def process_mr_records(token: str) -> None:
     )
 
     for record in list(records):
-        project = record["project_path"]
-        mr_iid = record["mr_iid"]
-        encoded_project = urllib.parse.quote(project, safe="")
-
-        console.print(f"\n[bold]─── MR !{mr_iid} ({project}) ───[/bold]")
-
         try:
+            project = record["project_path"]
+            mr_iid = record["mr_iid"]
+            encoded_project = urllib.parse.quote(project, safe="")
+
+            console.print(f"\n[bold]─── MR !{mr_iid} ({project}) ───[/bold]")
+
             mr = _api_get(f"/projects/{encoded_project}/merge_requests/{mr_iid}", token)
             state = mr.get("state", "unknown")
 
@@ -199,13 +199,13 @@ def process_pipeline_records(token: str) -> None:
     )
 
     for record in list(records):
-        pipeline_id = record["pipeline_id"]
-        project = record["project_path"]
-        encoded_project = urllib.parse.quote(project, safe="")
-
-        console.print(f"\n[bold]─── Pipeline #{pipeline_id} ({project}) ───[/bold]")
-
         try:
+            pipeline_id = record["pipeline_id"]
+            project = record["project_path"]
+            encoded_project = urllib.parse.quote(project, safe="")
+
+            console.print(f"\n[bold]─── Pipeline #{pipeline_id} ({project}) ───[/bold]")
+
             pipeline = ps.fetch_pipeline(encoded_project, pipeline_id, token)
             status = pipeline.get("status", "unknown")
             icon = ps.STATUS_ICONS.get(status, "❓")
